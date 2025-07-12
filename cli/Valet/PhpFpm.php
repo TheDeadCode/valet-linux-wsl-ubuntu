@@ -15,6 +15,7 @@ class PhpFpm
     public $sm;
     public $cli;
     public $files;
+    public $configuration;
     public $site;
     public $nginx;
     public $version;
@@ -26,16 +27,19 @@ class PhpFpm
      * @param ServiceManager $sm
      * @param CommandLine $cli
      * @param Filesystem $files
+     * @param Configuration $configuration
      * @param Site $site
      * @param Nginx $nginx
+     *
      * @return void
      */
-    public function __construct(PackageManager $pm, ServiceManager $sm, CommandLine $cli, Filesystem $files, Site $site, Nginx $nginx)
+    public function __construct(PackageManager $pm, ServiceManager $sm, CommandLine $cli, Filesystem $files, Configuration $configuration, Site $site, Nginx $nginx)
     {
         $this->cli = $cli;
         $this->pm = $pm;
         $this->sm = $sm;
         $this->files = $files;
+        $this->configuration = $configuration;
         $this->site = $site;
         $this->nginx = $nginx;
     }
@@ -104,7 +108,11 @@ class PhpFpm
 
         if (!$this->pm->installed("php{$version}-fpm")) {
             $this->pm->ensureInstalled("php{$version}-fpm");
-            $this->sm->enable($this->fpmServiceName());
+
+            if ($this->configuration->read()['enabled']) {
+                $this->sm->enable($this->fpmServiceName());
+            }
+
         }
 
         return $version;
@@ -142,6 +150,20 @@ class PhpFpm
         );
     }
 
+    public function disable()
+    {
+        $this->sm->disable(collect($this->utilizedPhpVersions())->map(function($version) {
+            return 'php' . $version . '-fpm';
+        })->toArray());
+    }
+
+    public function enable()
+    {
+        $this->sm->enable(collect($this->utilizedPhpVersions())->map(function($version) {
+            return 'php' . $version . '-fpm';
+        })->toArray());
+    }
+
 
     /**
      * Isolate a given directory to use a specific version of PHP.
@@ -166,6 +188,11 @@ class PhpFpm
         $this->stopIfUnused($oldCustomPhpVersion);
         $this->restart($version);
         $this->nginx->restart();
+
+        // Else we check if we enable it
+        if ($this->configuration->read()['enabled'] == true) {
+            $this->sm->enable("php" . $version . "-fpm");
+        }
 
         info(sprintf('The site [%s] is now using %s.', $site, $version));
     }
@@ -233,7 +260,7 @@ class PhpFpm
             $exception = $e;
         }
 
-        if ($this->sm->disabled($this->fpmServiceName())) {
+        if ($this->sm->disabled($this->fpmServiceName()) && $this->configuration->read()['enabled'] == true) {
             info('Enabling php' . $this->getPhpVersion() . '-fpm...');
             $this->sm->enable($this->fpmServiceName());
         }
@@ -281,6 +308,7 @@ class PhpFpm
         if (!in_array($phpVersion, $this->utilizedPhpVersions())) {
 
             $this->sm->stop($this->fpmServiceName($phpVersion));
+            $this->sm->disable($this->fpmServiceName($phpVersion));
         }
     }
 
@@ -386,15 +414,17 @@ class PhpFpm
      *
      * @return array
      */
-    public function getFpmServiceNames()
+    public function getFpmServiceNames($specificVersion = null)
     {
-        if(is_null($this->version)) {
-            $this->version = $this->getPhpVersion();
+        $version = $specificVersion ?? $this->version ?? null;
+
+        if(is_null($version)) {
+            $this->version = $version = $this->getPhpVersion();
         }
         return [
             "php-fpm",
-            "php-fpm{$this->version}",
-            "php{$this->version}-fpm",
+            "php-fpm{$version}",
+            "php{$version}-fpm",
         ];
     }
 
@@ -403,14 +433,14 @@ class PhpFpm
      *
      * @return string
      */
-    public function fpmServiceName()
+    public function fpmServiceName($version = null)
     {
         $services = array_map(function ($serviceName) {
             return [
                 'name' => $serviceName,
                 'status' => $this->sm->status($serviceName),
             ];
-        }, $this->getFpmServiceNames());
+        }, $this->getFpmServiceNames($version));
         $services = array_filter($services, function ($service) {
             return false === strpos($service['status'], 'not-found') && false === strpos($service['status'], 'not be found');
         });

@@ -226,25 +226,6 @@ class Systemd implements ServiceManager
         );
     }
 
-    /**
-     * Install Valet DNS services.
-     *
-     * @param Filesystem $files Filesystem object
-     *
-     * @return void
-     */
-    public function installValetDns($files)
-    {
-        info("Installing Valet DNS service...");
-
-        $files->put(
-            '/etc/systemd/system/valet-dns.service',
-            $files->get(__DIR__ . '/../../stubs/init/systemd')
-        );
-
-        $this->enable('valet-dns');
-    }
-
     public function getRunningServices()
     {
         return $this->getAllRunningServices();

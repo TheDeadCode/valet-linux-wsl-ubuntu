@@ -36,7 +36,6 @@ $app->command('install [--ignore-selinux]', function ($ignoreSELinux) {
     Requirements::setIgnoreSELinux($ignoreSELinux)->check();
     Nginx::install();
     PhpFpm::install();
-    DnsMasq::install(Configuration::read()['domain']);
     Configuration::install();
     Nginx::restart();
     Valet::symlinkToUsersBin();
@@ -56,6 +55,30 @@ if (is_dir(VALET_HOME_PATH)) {
     Configuration::prune();
     Site::pruneLinks();
 
+    $app->command('disable', function () {
+        if (Configuration::read()['enabled'] == false) {
+            return info("Valet's services are already disabled.");
+        }
+
+        Configuration::updateKey('enabled', false);
+        Nginx::disable();
+        PhpFpm::disable();
+
+        info('Valet services were disabled');
+    });
+
+    $app->command('enable', function () {
+        if (Configuration::read()['enabled'] == true) {
+            return info("Valet's services are already enabled.");
+        }
+
+        Configuration::updateKey('enabled', true);
+        Nginx::enable();
+        PhpFpm::enable();
+
+        info('Valet services were enabled');
+    });
+
     /**
      * Get or set the domain currently being used by Valet.
      */
@@ -64,10 +87,8 @@ if (is_dir(VALET_HOME_PATH)) {
             return info(Configuration::read()['domain']);
         }
 
-        DnsMasq::updateDomain(
-            $oldDomain = Configuration::read()['domain'],
-            $domain = trim($domain, '.')
-        );
+        $oldDomain = Configuration::read()['domain'];
+        $domain = trim($domain, '.');
 
         Configuration::updateKey('domain', $domain);
         Site::resecureForNewDomain($oldDomain, $domain);
@@ -145,7 +166,6 @@ if (is_dir(VALET_HOME_PATH)) {
     $app->command('status', function () {
         PhpFpm::status();
         Nginx::status();
-        DnsMasq::status();
     })->descriptions('View Valet service status');
 
     /**
@@ -261,15 +281,6 @@ if (is_dir(VALET_HOME_PATH)) {
     })->descriptions('Get all of the paths registered with Valet');
 
     /**
-     * Open the current directory in the browser.
-     */
-    $app->command('open [domain]', function ($domain = null) {
-        $url = 'http://' . ($domain ?: Site::host(getcwd())) . '.' . Configuration::read()['domain'] . '/';
-
-        passthru('xdg-open ' . escapeshellarg($url));
-    })->descriptions('Open the site for the current (or specified) directory in your browser');
-
-    /**
      * Generate a publicly accessible URL for your project.
      */
     $app->command('share', function () {
@@ -289,7 +300,6 @@ if (is_dir(VALET_HOME_PATH)) {
     $app->command('start', function () {
         PhpFpm::restart();
         Nginx::restart();
-        DnsMasq::restart();
 
         info('Valet services have been started.');
     })->descriptions('Start the Valet services');
@@ -300,7 +310,6 @@ if (is_dir(VALET_HOME_PATH)) {
     $app->command('restart', function () {
         PhpFpm::restart();
         Nginx::restart();
-        DnsMasq::restart();
 
         info('Valet services have been restarted.');
     })->descriptions('Restart the Valet services');
@@ -311,7 +320,6 @@ if (is_dir(VALET_HOME_PATH)) {
     $app->command('stop', function () {
         PhpFpm::stop();
         Nginx::stop();
-        DnsMasq::stop();
 
         info('Valet services have been stopped.');
     })->descriptions('Stop the Valet services');
@@ -322,7 +330,6 @@ if (is_dir(VALET_HOME_PATH)) {
     $app->command('uninstall', function () {
         Nginx::uninstall();
         PhpFpm::uninstall();
-        DnsMasq::uninstall();
         Configuration::uninstall();
         Valet::uninstall();
 
@@ -333,16 +340,7 @@ if (is_dir(VALET_HOME_PATH)) {
      * Determine if this is the latest release of Valet.
      */
     $app->command('update', function () use ($version) {
-        $script = dirname(__FILE__) . '/scripts/update.sh';
-
-        if (Valet::onLatestVersion($version)) {
-            info('You have the latest version of Valet Linux');
-            passthru($script);
-        } else {
-            warning('There is a new release of Valet Linux');
-            warning('Updating now...');
-            passthru($script . ' update');
-        }
+        warning('This is a fork, not synced with the main branch.');
     })->descriptions('Update Valet Linux and clean up cruft');
 
     /**

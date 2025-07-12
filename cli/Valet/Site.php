@@ -109,7 +109,7 @@ class Site
             })->reject(function ($host) {
                 // Exclude sites without a valid proxy_pass directive
                 return $host === '(other)';
-            })->map(function ($host, $site) use ($certs, $domain) {             
+            })->map(function ($host, $site) use ($certs, $domain) {
                 $secured = $certs->has($site);
                 $url = ($secured ? 'https' : 'http') . '://' . $site . '.' . $domain;
                 return [
@@ -307,7 +307,7 @@ class Site
     {
         $path = $path ?: $this->certificatesPath();
         $domain = $this->config->read()['domain'];
-        
+
         return collect($this->files->scanDir($path))->filter(function ($value, $key) {
             return ends_with($value, '.crt');
         })->map(function ($cert) use ($domain) {
@@ -894,7 +894,7 @@ class Site
     {
         // If a site has an SSL certificate, we need to keep its custom config file, but we can
         // just re-generate it without defining a custom `valet.sock` file
-        if ($this->files->exists($this->certificatesPath($valetSite, 'crt'))) {
+        if ($this->files->exists($this->certificatesPath() . '/' . $valetSite . '.crt')) {
             $siteConf = $this->buildSecureNginxServer($valetSite);
             $this->files->putAsUser($this->nginxPath($valetSite), $siteConf);
         } else {
