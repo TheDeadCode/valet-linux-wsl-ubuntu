@@ -154,14 +154,14 @@ class PhpFpm
     {
         $this->sm->disable(collect($this->utilizedPhpVersions())->map(function($version) {
             return 'php' . $version . '-fpm';
-        })->toArray());
+        })->push('php' . $this->getVersion() . '-fpm')->unique()->values()->toArray());
     }
 
     public function enable()
     {
         $this->sm->enable(collect($this->utilizedPhpVersions())->map(function($version) {
             return 'php' . $version . '-fpm';
-        })->toArray());
+        })->push('php' . $this->getVersion() . '-fpm')->unique()->values()->toArray());
     }
 
 
@@ -243,8 +243,11 @@ class PhpFpm
         $exception = null;
 
         $this->stop();
-        info('Disabling php' . $oldVersion . '-fpm...');
-        $this->sm->disable($this->fpmServiceName());
+
+        if ( ! in_array($version, $this->utilizedPhpVersions())) {
+            info('Disabling php' . $oldVersion . '-fpm...');
+            $this->sm->disable($this->fpmServiceName());
+        }
 
         if (!isset($version) || strtolower($version) === 'default') {
             $this->version = $this->getVersion(true);

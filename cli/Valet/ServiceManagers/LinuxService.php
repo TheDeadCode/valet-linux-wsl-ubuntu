@@ -146,9 +146,9 @@ class LinuxService implements ServiceManager
                     if (!$this->disabled($service)) {
                         $this->cli->quietly('sudo systemctl disable ' . $service);
                         info(ucfirst($service) . ' has been disabled');
+                    } else {
+                        info(ucfirst($service) . ' was already disabled');
                     }
-
-                    info(ucfirst($service) . ' was already disabled');
                 } catch (DomainException $e) {
                     warning(ucfirst($service) . ' not available.');
                 }
@@ -187,17 +187,11 @@ class LinuxService implements ServiceManager
                     if ($this->disabled($service)) {
                         $this->cli->quietly('sudo systemctl enable ' . $service);
                         info(ucfirst($service) . ' has been enabled');
-
-                        return true;
+                    } else {
+                        info(ucfirst($service) . ' was already enabled');
                     }
-
-                    info(ucfirst($service) . ' was already enabled');
-
-                    return true;
                 } catch (DomainException $e) {
                     warning(ucfirst($service) . ' not available.');
-
-                    return false;
                 }
             }
         } else {
