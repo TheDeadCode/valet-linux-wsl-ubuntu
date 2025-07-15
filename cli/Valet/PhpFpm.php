@@ -291,7 +291,7 @@ class PhpFpm
     {
         $path = $this->cli->run("which php{$this->getPhpVersion()}");
 
-        $this->cli->run("update-alternatives --set php $path");
+        $this->cli->run("sudo update-alternatives --set php $path");
     }
 
     /**

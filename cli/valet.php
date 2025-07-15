@@ -65,7 +65,7 @@ if (is_dir(VALET_HOME_PATH)) {
         PhpFpm::disable();
 
         info('Valet services were disabled');
-    });
+    })->descriptions('Enable the Valet services to start upon the WSL system boot.');
 
     $app->command('enable', function () {
         if (Configuration::read()['enabled'] == true) {
@@ -77,8 +77,7 @@ if (is_dir(VALET_HOME_PATH)) {
         PhpFpm::enable();
 
         info('Valet services were enabled');
-    });
-
+    })->descriptions('Enable the Valet services to start upon the WSL system boot.');
     /**
      * Get or set the domain currently being used by Valet.
      */
